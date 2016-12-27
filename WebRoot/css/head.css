@@ -1,0 +1,49 @@
+/* defult.css */
+
+/* =body set body attribute , as backgroud ... */
+	body
+	{
+		margin: 2px 5% 0px 5%;
+		background-color: #FFFFFF; /* 背景颜色 */
+	}
+	
+	hr
+	{
+		color: #606060 ;
+	}
+	
+	a:link
+	{
+		text-decoration: none ; /*默认链接文字无下划线*/
+	}	
+	a:visited
+	{
+		text-decoration: none ; /*访问过后链接文字无下划线*/
+	}
+	a:hover
+	{
+		color: #ff00ff ; /*鼠标在链接文字上时颜色*/
+		text-decoration: underline ; /*鼠标在链接文字上时有下划线*/
+	}
+
+	form
+	{
+		align: center ;
+	}
+			
+	.td_lr
+	{
+		border-left: black solid 1px ;
+		border-right: black solid 1px ;
+	}
+	
+	.td_r
+	{
+		border-right: black solid 1px ;
+	}
+	
+	.td_l
+	{
+		border-left: black solid 1px ;
+	}
+	

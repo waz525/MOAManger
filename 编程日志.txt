@@ -1,0 +1,138 @@
+
+-----------------------------------------20161221
+v0.5 修正导出出差表错误问题，新建row和cell，并设置相应格式
+
+
+-----------------------------------------20161117
+v0.4 处理返回值为null的问题，主要是签到查询
+     各数据表有增加字段，进行相关查询
+     在导出考勤表时，出差使用出差地名
+     在user表中增加isout字段，用于标识是否为常驻人员，用于考虑表导出
+
+-----------------------------------------20161117
+v0.3 用户增加常驻地，修正json返回null时报错
+
+-----------------------------------------20161008
+v0.2，完成 用户管理、考勤信息、通知信息、硬件信息 四个功能设计
+
+-----------------------------------------20160920
+
+1、mysql数据库表设计
+
+create DATABASE MobileOA DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+
+use MobileOA
+
+create table user ( id VARCHAR(30), username VARCHAR(20), password VARCHAR(30), email VARCHAR(30), realname VARCHAR(30), nextApproval_id VARCHAR(30),deviceid VARCHAR(30), mobile VARCHAR(20), createdAt DATETIME , updatedAt DATETIME );
+alter table user ADD CONSTRAINT PK_user PRIMARY KEY (username) ;
+alter table user add resident varchar(30) default '江苏省南京市';
+alter table user add userAvater varchar(1024) ;
+alter table user add noticetime varchar(30) default '2016-10-24 00:00:00';
+alter table user add isout int(4) default 1;
+update user set isout = 0 where resident like '%南京%' ;
+
+
+
+----create table accessToken( id  VARCHAR(30), ttl INT(10) , userId  VARCHAR(30), createdAt DATETIME , updatedAt DATETIME );
+
+----create table `sign`( id  VARCHAR(30), userId  VARCHAR(30), `in` INT(4) , `out` INT(4) ,sign_date VARCHAR(30), in_location VARCHAR(100), out_location VARCHAR(100), overtime  INT(4) , out_time DATETIME  ,inAddress  VARCHAR(100) , outAddress VARCHAR(100) ,signDateInt INT(20) , createdAt DATETIME , updatedAt DATETIME );
+
+create table `sign`( id  VARCHAR(30), userId  VARCHAR(30), signin INT(4) , signout INT(4) ,sign_date VARCHAR(30), in_location VARCHAR(100), out_location VARCHAR(100), overtime  INT(4) , out_time DATETIME  ,inAddress  VARCHAR(100) , outAddress VARCHAR(100) ,signDateInt VARCHAR(20) , createdAt DATETIME , updatedAt DATETIME );
+alter table `sign` add inAddition varchar(100) default '无';
+alter table `sign` add outAddition varchar(100) default '无';
+
+
+create table approval ( id VARCHAR(30), userid VARCHAR(30), type INT(10) ,startDate  VARCHAR(30), endDate VARCHAR(30), reason VARCHAR(50), applicantName  VARCHAR(30), status INT(4) ,approvalId  VARCHAR(30), applicantId  VARCHAR(30),  createdAt DATETIME , updatedAt DATETIME );
+
+create table notice ( id VARCHAR(30), publisher VARCHAR(30), noticeContent VARCHAR(200), noticeTitle VARCHAR(30), noticeGroup VARCHAR(100), createdAt DATETIME , updatedAt DATETIME );
+
+create table trip ( id VARCHAR(30), source VARCHAR(30), destination VARCHAR(30), reason VARCHAR(100), userid VARCHAR(30), realName VARCHAR(30), tripDate VARCHAR(30),  createdAt DATETIME , updatedAt DATETIME );
+
+insert into user(id,username,password,realname,nextApproval_id,mobile,deviceid,createdAt,updatedAt) values ("x0801hmh0g9399cfdu67ozmi" , "fhadmin","admin123","系统管理员","","","",NOW(),NOW()) ;
+
+create table server ( id VARCHAR(30) NOT NULL , ordernumber VARCHAR(30) NOT NULL , linenumber  VARCHAR(30) NOT NULL , matternumber VARCHAR(30) NOT NULL , matterinfo  VARCHAR(200) NOT NULL , quantity  VARCHAR(30) NOT NULL , deliverytime VARCHAR(30) NOT NULL ,  contractnumber VARCHAR(50) NOT NULL ,createdAt DATETIME , updatedAt DATETIME  );
+alter table server ADD CONSTRAINT PK_server PRIMARY KEY (id) ;
+alter table server add batchnumber varchar(30);
+alter table server add serialnumber varchar(30);
+alter table server add userid varchar(30);
+alter table server add QRCode varchar(30);
+
+create table servernoinfo( id VARCHAR(30) NOT NULL , ordernumber VARCHAR(30) NOT NULL , linenumber  VARCHAR(30) NOT NULL , batchnumber varchar(30), serialnumber varchar(30), QRCode varchar(30),userid varchar(30), createdAt DATETIME , updatedAt DATETIME  );
+
+
+create table travel (id VARCHAR(30) NOT NULL , userid VARCHAR(30), startDate  VARCHAR(30), endDate VARCHAR(30),reason VARCHAR(50), destination VARCHAR(30),createdAt DATETIME , updatedAt DATETIME  );
+alter table travel add resident varchar(30);
+update travel a set resident = ( select resident from user b where a.userid = b.id) where a.resident is null ;
+
+
+create table travel1 (id VARCHAR(30) NOT NULL , userid VARCHAR(30), startDate  DATE, endDate DATE, reason VARCHAR(50), destination VARCHAR(30),createdAt DATETIME , updatedAt DATETIME  );
+
+
+create table helpinfo( id int(4) not null, flag int(4) default 0 , question VARCHAR(30), answer VARCHAR(1000)  );
+
+delete from helpinfo;
+
+insert into helpinfo(id, flag, question , answer ) values( 1, 1, '签到功能' , '
+<p>1、签到分为新旧两版，新版支持撤销（5分钟内）、附加说明，在<font color="blue">个人中心</font>里切换。</p>
+<p>2、签到必须选择地址，新版为在地图上点击标识来选择最近地址。</p>
+<p>3、附加说明只作为个人记录使用，不能代替异常申请。</p>
+<p>4、如工作不满8小时或忘记签到/签退，必须进行异常申请。异常申请入口为<font color="blue">查询->签到历史查询</font>右上角<span class="aui-iconfont aui-icon-edit" ></span>，选择实际的上下班时间。</p>
+<p>5、<font color="red">出差不需要签到，总部员工不需要签到</font>。</p>
+<p>6、针对部分型号手机<font color="red">无签退</font>的问题，在<font color="blue">个人中心</font>中打开<font color="blue">签到单按钮</font>。</p>
+' ) ;
+
+insert into helpinfo(id, flag, question , answer ) values( 2 , 1,'出差报备' , '
+<p>1、出差为离开常驻地到外地</p>
+<font color="blue">比如常驻地是金华，出差去杭州、温州帮忙，需要填写两次报备：</p>
+第一次：出差地为杭州，出发时间为 金华-->杭州，回程时间为 杭州-->温州 ；</p>
+第二次：出差地为温州，出发时间为 杭州-->温州，回程时间为 温州-->金华 。</font></p>
+<p>2、客服上报的时间以回程为基准，<font color="red">上报跨度为上月21日至本月20日</font>。</p>
+<p>3、支持回程时间待定，回程后即行补全；只支持一个待定行程。<font color="red">现版本不支持修改，所以请等行程实施了再行报备。</font></p>
+<p>4、若常驻地变更，请先填写出差报备（<font color="blue">原常驻地->新常驻地，出差和回程时间为同一天</font>）；再联系客服修改常驻地；点击常驻地址，可刷新同步。</p>
+<p>5、针对部分型号手机<font color="red">日期无法选择</font>的问题，在<font color="blue">个人中心</font>中打开<font color="blue">期手动输入日</font>。此亦适用于加班和请假</p>
+' ) ;
+
+insert into helpinfo(id, flag, question , answer ) values( 3 , 1,'加班、请假、通讯录、审批和通知' , '
+<p>1、签退时间超过20:30才能申请加班，异常申请的不能进行加班申请。</p>
+<p>2、所有的申请由<font color="red">直接领导</font>审批。</p>
+<p>3、审批和通知有未处理数量提示，后台每半小时刷新一次；<font color="blue">主页</font>右上角<span class="aui-iconfont aui-icon-refresh" ></span>，用于手动刷新。</p>
+<p>4、<font color="blue">通知</font>的右上角有发布按钮<span class="aui-iconfont aui-icon-edit" ></span>。</p>
+<p>5、<font color="blue">通讯录</font>的右上角有<span class="aui-iconfont aui-icon-refresh" ></span>，用于同步云端通讯录。个人可在<font color="blue">个人中心</font>中修改本人手机号。
+' ) ;
+
+insert into helpinfo(id, flag, question, answer ) values( 4 , 1,'设备信息管理' , '
+<p>1、设备信息管理用于扫描设备二维码，并自动查询其销售相关信息，达到新设备验货、合同管理等目的。</p>
+<p>2、功能入口：<font color="blue">查询->设备信息管理</font></p>
+<p>3、支持录入同时查询和先录入后查询两种模式，在弹出菜单（右上角<span class="aui-iconfont aui-icon-menu"></span> 按钮）里，点击“先录后查”进行模式切换。</p>
+<p>4、<font color="red">“清空列表”为删除所有数据，请谨慎使用</font>。</p>
+
+' ) ;
+
+insert into helpinfo(id, flag, question, answer ) values( 5 , 1,'个人中心' , '
+<p>1、若日期选择不正常，可打开日期手动输入。</p>
+<p>2、<font color="red">更换手机前</font>，请在<font color="blue">个人中心</font>中进行<font color="blue">设备解绑</font>。</p>
+' ) ;
+
+insert into helpinfo(id, flag, question, answer ) values( 6 , 1,'' , '<p>- 完 -</p>' ) ;
+
+
+
+2、测试数据
+
+insert into `sign`(id,userId,`in`,`out`,sign_date,in_location,out_location,overtime,out_time,inAddress,outAddress,signDateInt,createdAt,updatedAt) values('x0801hmh0g9399cfdu67ozmi','c2b3d47f6a28451faa03e259',1,1,'2016-09-22','113.39600601694802:22.515755923766292','113.39600601694802:22.515755923766292',0,'2016-09-22 18:39:00','中山市广东省中山市兴中道26号','中山市广东省中山市兴中道26号',1474473600000,'2016-09-22 08:26:05','2016-09-22 08:26:05');
+
+insert into approval(id,userid,type,startDate,endDate,reason,applicantName,status,approvalId,applicantId,createdAt,updatedAt) values('57b5e468d94890cc4dbffb33','X4033',0,'2016-09-07','2016-09-09','测试请假','韦爱中','0','','c2b3d47f6a28451faa03e259','2016-08-30 22:41:07','2016-08-30 22:41:07');
+
+insert into approval(id,userid,type,startDate,endDate,reason,applicantName,status,approvalId,applicantId,createdAt,updatedAt) values('57b5e468d94890cc4dbffb33','X4033',0,'2016-08-27','2016-09-02','测试请假','韦爱中','0','','c2b3d47f6a28451faa03e259','2016-08-30 22:41:07','2016-08-30 22:41:07');
+
+insert into approval(id,userid,type,startDate,endDate,reason,applicantName,status,approvalId,applicantId,createdAt,updatedAt) values('57b5e468d94890cc4dbffb33','X4033',0,'2016-09-27','2016-10-09','测试请假','韦爱中','0','','c2b3d47f6a28451faa03e259','2016-08-30 22:41:07','2016-08-30 22:41:07');
+
+insert into approval(id,userid,type,startDate,endDate,reason,applicantName,status,approvalId,applicantId,createdAt,updatedAt) values('57b5e468d94890cc4dbffb33','X4033',0,'2016-08-22','2016-08-25','测试请假','韦爱中','1','','c2b3d47f6a28451faa03e259','2016-08-30 22:41:07','2016-08-30 22:41:07');
+
+insert into approval(id,userid,type,startDate,endDate,reason,applicantName,status,approvalId,applicantId,createdAt,updatedAt) values('57b5e468d94890cc4dbffb33','X4033',0,'2016-10-07','2016-10-15','测试请假','韦爱中','0','','c2b3d47f6a28451faa03e259','2016-08-30 22:41:07','2016-08-30 22:41:07');
+
+insert into approval(id,userid,type,startDate,endDate,reason,applicantName,status,approvalId,applicantId,createdAt,updatedAt) values('57b5e468d94890cc4dbffb33','X4033',2,'2016-09-16','2016-09-18','测试异常','韦爱中','0','','c2b3d47f6a28451faa03e259','2016-08-30 22:41:07','2016-08-30 22:41:07');
+
+insert into notice( id, publisher , noticeContent , noticeTitle , noticeGroup , createdAt , updatedAt ) values ( '57b5e468d94890cc4dbffb33' , 'c2b3d47f6a28451faa03e259' , '这是一个测试通知', '通知测试','ALL',NOW(),NOW());
+
+insert into travel (id,userid,startDate,endDate,reason,destination,createdAt,updatedAt) values ( '57b5e468d94890cc4dbffb33', 'c2b3d47f6a28451faa03e259' , '2016-08-30' , '2016-09-10' , '杭州G20安保', '杭州', NOW(),NOW());
